@@ -9,3 +9,6 @@ edition = "2021"
 [dependencies]
 bevy = "0.13.2"
 bevy_xpbd_3d = "0.4.2"
+
+[profile.dev]
+opt-level = 1
