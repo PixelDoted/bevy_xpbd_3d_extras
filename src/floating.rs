@@ -10,6 +10,8 @@ pub struct FloatingBody {
     /// Enables adding counter force to float the [`RigidBody`]
     pub enabled: bool,
 
+    /// The offset of the ray relative to the transform of it's entity
+    pub ray_offset: Vec3,
     pub float_height: f32,
     pub buffer_height: f32,
 
@@ -21,6 +23,7 @@ impl Default for FloatingBody {
     fn default() -> Self {
         Self {
             enabled: true,
+            ray_offset: Vec3::ZERO,
             float_height: 1.0,
             buffer_height: 1.0,
 
@@ -49,7 +52,7 @@ fn solve_constraint(
 
         let max_toi = fb.float_height + fb.buffer_height;
         let hit = spatial_query.cast_ray(
-            pos.0,
+            pos.0 + fb.ray_offset,
             -up_dir,
             max_toi,
             true,
@@ -83,8 +86,8 @@ fn debug_gizmos(
         let up_dir = up.map(|d| d.0).unwrap_or(Direction3d::Y);
         let up_vec = Into::<Vec3>::into(up_dir);
 
-        let float_end = pos.0 + -up_vec * fb.float_height;
-        gizmos.line(pos.0, float_end, Color::RED);
+        let float_end = pos.0 + fb.ray_offset + -up_vec * fb.float_height;
+        gizmos.line(pos.0 + fb.ray_offset, float_end, Color::RED);
         gizmos.line(
             float_end,
             float_end + -up_vec * fb.buffer_height,
