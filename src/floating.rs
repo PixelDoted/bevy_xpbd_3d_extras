@@ -66,7 +66,7 @@ fn solve_constraint(
                 lin_vel.0 -= (tension - damp) * up_vec * time.delta_seconds();
             }
 
-            if x < std::f32::EPSILON {
+            if x < f32::EPSILON {
                 commands.entity(entity).insert(Grounded);
             }
         } else {
@@ -98,11 +98,17 @@ pub struct FloatingBodyPlugin {
     schedule_label: Interned<dyn ScheduleLabel>,
 }
 
+impl FloatingBodyPlugin {
+    pub fn new(schedule: impl ScheduleLabel) -> Self {
+        Self {
+            schedule_label: schedule.intern(),
+        }
+    }
+}
+
 impl Default for FloatingBodyPlugin {
     fn default() -> Self {
-        Self {
-            schedule_label: Interned(&PostUpdate),
-        }
+        Self::new(PostUpdate)
     }
 }
 
