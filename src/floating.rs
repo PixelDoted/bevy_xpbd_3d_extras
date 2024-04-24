@@ -43,10 +43,11 @@ fn solve_constraint(
         &FloatingBody,
         Option<&UpDirection>,
         &mut LinearVelocity,
+        Has<Grounded>,
     )>,
     mut commands: Commands,
 ) {
-    for (entity, pos, fb, up, mut lin_vel) in query.iter_mut() {
+    for (entity, pos, fb, up, mut lin_vel, grounded) in query.iter_mut() {
         let up_dir = up.map(|d| d.0).unwrap_or(Direction3d::Y);
         let up_vec = Into::<Vec3>::into(up_dir);
 
@@ -63,7 +64,7 @@ fn solve_constraint(
             let rel_vel = lin_vel.dot(-up_vec);
             let x = hit.time_of_impact - fb.float_height;
 
-            if fb.enabled {
+            if fb.enabled && !(x > f32::EPSILON && !grounded) {
                 let tension = x * (fb.damp_frequency * fb.damp_frequency);
                 let damp = rel_vel * (fb.damp_factor * (2.0 * fb.damp_frequency));
                 lin_vel.0 -= (tension - damp) * up_vec * time.delta_seconds();
