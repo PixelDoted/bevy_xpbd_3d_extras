@@ -14,6 +14,7 @@ pub struct FloatingBody {
     pub ray_offset: Vec3,
     pub float_height: f32,
     pub buffer_height: f32,
+    pub shape: Option<Collider>,
 
     pub damp_frequency: f32,
     pub damp_factor: f32,
@@ -26,6 +27,7 @@ impl Default for FloatingBody {
             ray_offset: Vec3::ZERO,
             float_height: 1.0,
             buffer_height: 1.0,
+            shape: None,
 
             damp_frequency: 15.0,
             damp_factor: 0.3,
@@ -53,37 +55,66 @@ fn solve_constraint(
         let up_vec = Into::<Vec3>::into(up_dir);
 
         let max_toi = fb.float_height + fb.buffer_height;
-        let hits = spatial_query.ray_hits(
-            pos.0 + fb.ray_offset,
-            -up_dir,
-            max_toi,
-            8,
-            true,
-            SpatialQueryFilter::from_excluded_entities([entity]),
-        );
+        let hit: Option<(Entity, f32)> = if let Some(shape) = &fb.shape {
+            let hits = spatial_query.shape_hits(
+                shape,
+                pos.0 + fb.ray_offset,
+                Quat::IDENTITY,
+                -up_dir,
+                max_toi,
+                8,
+                false,
+                SpatialQueryFilter::from_excluded_entities([entity]),
+            );
 
-        let hit = hits
-            .into_iter()
-            .filter(|d| {
-                hit_query
-                    .get(d.entity)
-                    .is_ok_and(|(_, rb, sensor)| rb && !sensor)
-                    && d.time_of_impact.is_finite()
-            })
-            .min_by(|a, b| a.time_of_impact.total_cmp(&b.time_of_impact));
+            let hit = hits
+                .into_iter()
+                .filter(|d| {
+                    hit_query
+                        .get(d.entity)
+                        .is_ok_and(|(_, rb, sensor)| rb && !sensor)
+                        && d.time_of_impact.is_finite()
+                })
+                .min_by(|a, b| a.time_of_impact.total_cmp(&b.time_of_impact));
 
-        if let Some(hit) = hit {
-            let Ok((hit_vel, _, _)) = hit_query.get(hit.entity) else {
+            hit.map(|d| (d.entity, d.time_of_impact))
+        } else {
+            let hits = spatial_query.ray_hits(
+                pos.0 + fb.ray_offset,
+                -up_dir,
+                max_toi,
+                8,
+                true,
+                SpatialQueryFilter::from_excluded_entities([entity]),
+            );
+
+            let hit = hits
+                .into_iter()
+                .filter(|d| {
+                    hit_query
+                        .get(d.entity)
+                        .is_ok_and(|(_, rb, sensor)| rb && !sensor)
+                        && d.time_of_impact.is_finite()
+                })
+                .min_by(|a, b| a.time_of_impact.total_cmp(&b.time_of_impact));
+
+            hit.map(|d| (d.entity, d.time_of_impact))
+        };
+
+        if let Some((hit_entity, hit_toi)) = hit {
+            let Ok((hit_vel, _, _)) = hit_query.get(hit_entity) else {
                 continue;
             };
 
             let rel_vel = lin_vel.dot(-up_vec) - hit_vel.dot(-up_vec);
-            let x = hit.time_of_impact - fb.float_height;
+            let x = hit_toi - fb.float_height;
 
             if fb.enabled && !(x > f32::EPSILON && !grounded) {
                 let tension = x * (fb.damp_frequency * fb.damp_frequency);
                 let damp = rel_vel * (fb.damp_factor * (2.0 * fb.damp_frequency));
                 lin_vel.0 -= (tension - damp) * up_vec * time.delta_seconds();
+
+                // TODO: Add a small force to the hit entity?
             }
 
             if x < f32::EPSILON {

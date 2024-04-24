@@ -25,6 +25,10 @@ fn setup(
         FloatingBody {
             float_height: 1.1,
             buffer_height: 0.45,
+
+            // If shape is [`None`] then a raycast is used instead.
+            // `0.39` is used so we can't detect a wall
+            shape: Some(Collider::cylinder(0.0, 0.39)),
             ..default()
         },
         RigidBody::Dynamic,
