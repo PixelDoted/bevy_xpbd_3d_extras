@@ -10,5 +10,10 @@ edition = "2021"
 bevy = "0.13"
 bevy_xpbd_3d = "0.4"
 
+[features]
+default = ["floating", "vehicle"]
+floating = []
+vehicle = []
+
 [profile.dev]
 opt-level = 1
