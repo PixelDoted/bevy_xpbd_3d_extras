@@ -20,11 +20,31 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut commands: Commands,
 ) {
+    // Floating Body
+    commands.spawn((
+        FloatingBody {
+            float_height: 1.1,
+            buffer_height: 0.45,
+            ..default()
+        },
+        RigidBody::Dynamic,
+        LockedAxes::ROTATION_LOCKED, // [`FloatingBody`] doesn't correct rotation
+        Collider::capsule(0.45, 0.4),
+        Friction::ZERO.with_combine_rule(CoefficientCombine::Min),
+        Restitution::ZERO.with_combine_rule(CoefficientCombine::Min),
+        SpatialBundle {
+            transform: Transform::from_xyz(0.0, 2.0, 0.0),
+            ..default()
+        },
+    ));
+
+    // Camera
     commands.spawn(Camera3dBundle {
         transform: Transform::from_xyz(0.0, 2.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..default()
     });
 
+    // Floor
     commands.spawn((
         RigidBody::Static,
         Collider::cuboid(20.0, 1.0, 20.0),
@@ -39,6 +59,7 @@ fn setup(
         },
     ));
 
+    // Step
     commands.spawn((
         RigidBody::Static,
         Collider::cuboid(5.0, 1.0, 5.0),
@@ -53,6 +74,7 @@ fn setup(
         },
     ));
 
+    // Capsule
     commands.spawn((
         RigidBody::Dynamic,
         LockedAxes::ALL_LOCKED.unlock_translation_y(),
@@ -63,19 +85,12 @@ fn setup(
         },
     ));
 
+    // Sensor
     commands.spawn((
-        FloatingBody {
-            float_height: 1.1,
-            buffer_height: 0.45,
-            ..default()
-        },
-        RigidBody::Dynamic,
-        LockedAxes::ROTATION_LOCKED, // [`FloatingBody`] doesn't correct rotation
-        Collider::capsule(0.45, 0.4),
-        Friction::ZERO.with_combine_rule(CoefficientCombine::Min),
-        Restitution::ZERO.with_combine_rule(CoefficientCombine::Min),
+        Sensor,
+        Collider::cuboid(1.0, 1.0, 1.0),
         SpatialBundle {
-            transform: Transform::from_xyz(0.0, 2.0, 0.0),
+            transform: Transform::from_xyz(0.0, 0.0, -3.0),
             ..default()
         },
     ));

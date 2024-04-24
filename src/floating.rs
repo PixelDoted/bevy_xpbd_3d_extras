@@ -37,6 +37,7 @@ impl Default for FloatingBody {
 fn solve_constraint(
     time: Res<Time>,
     spatial_query: Res<SpatialQueryPipeline>,
+    hit_query: Query<(&LinearVelocity, Has<RigidBody>, Has<Sensor>), Without<FloatingBody>>,
     mut query: Query<(
         Entity,
         &Position,
@@ -52,16 +53,31 @@ fn solve_constraint(
         let up_vec = Into::<Vec3>::into(up_dir);
 
         let max_toi = fb.float_height + fb.buffer_height;
-        let hit = spatial_query.cast_ray(
+        let hits = spatial_query.ray_hits(
             pos.0 + fb.ray_offset,
             -up_dir,
             max_toi,
+            8,
             true,
             SpatialQueryFilter::from_excluded_entities([entity]),
         );
 
+        let hit = hits
+            .into_iter()
+            .filter(|d| {
+                hit_query
+                    .get(d.entity)
+                    .is_ok_and(|(_, rb, sensor)| rb && !sensor)
+                    && d.time_of_impact.is_finite()
+            })
+            .min_by(|a, b| a.time_of_impact.total_cmp(&b.time_of_impact));
+
         if let Some(hit) = hit {
-            let rel_vel = lin_vel.dot(-up_vec);
+            let Ok((hit_vel, _, _)) = hit_query.get(hit.entity) else {
+                continue;
+            };
+
+            let rel_vel = lin_vel.dot(-up_vec) - hit_vel.dot(-up_vec);
             let x = hit.time_of_impact - fb.float_height;
 
             if fb.enabled && !(x > f32::EPSILON && !grounded) {
